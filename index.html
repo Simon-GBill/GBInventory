@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e74c3c">
+<meta name="robots" content="noindex">
+<title>Inventaire tournant</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e74c3c'/%3E%3Cpath d='M18 33l9 9 19-20' stroke='white' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f3f4f6; --card:#ffffff; --text:#1d2129; --muted:#6b7280; --line:#e3e5e8;
+  --accent:#e74c3c; --accent-dark:#c0392b;
+  --ok:#16a34a; --ok-bg:#e8f7ee; --ok-line:#b7e4c7;
+  --warn:#ea580c; --warn-bg:#fff1e6; --warn-line:#fdc9a3;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1115; --card:#1a1d23; --text:#e8eaed; --muted:#9aa0a6; --line:#2b2f37;
+    --ok:#22c55e; --ok-bg:#11281a; --ok-line:#1f5133;
+    --warn:#fb923c; --warn-bg:#2d1a0d; --warn-line:#6b3a14;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer}
+[hidden]{display:none!important}
+.cadre{max-width:640px;margin:0 auto}
+
+/* ---------- En-tête de liste ---------- */
+.entete{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px 10px;padding-top:calc(12px + env(safe-area-inset-top))}
+.entete-haut{display:flex;align-items:center;gap:10px}
+.entete h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icone{border:0;background:transparent;width:36px;height:36px;border-radius:10px;font-size:20px;display:grid;place-items:center;color:var(--muted)}
+.prog{display:flex;align-items:center;gap:10px;margin-top:8px}
+.barre{flex:1;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.barre i{display:block;height:100%;background:var(--ok);width:0;transition:width .25s}
+.compteur{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;white-space:nowrap}
+.filtres{display:flex;gap:6px;margin-top:10px}
+.filtres button{flex:1;border:1px solid var(--line);background:transparent;border-radius:99px;padding:7px 4px;font-size:14px;color:var(--muted)}
+.filtres button[aria-pressed="true"]{background:var(--text);color:var(--card);border-color:var(--text);font-weight:600}
+
+/* ---------- Lignes ---------- */
+main{padding:6px 12px 120px}
+.zone h2{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 4px 6px;display:flex;justify-content:space-between;font-weight:700}
+.ligne{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:6px;overflow:hidden;box-shadow:var(--shadow);transition:background-color .15s,border-color .15s,opacity .2s}
+.ligne .principal{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 12px;display:flex;gap:11px;align-items:center}
+.etat{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff}
+.nom{font-weight:600;font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.meta{font-size:12.5px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fdv{background:var(--accent);color:#fff;border-radius:4px;padding:1px 5px;font-size:10.5px;font-weight:800;letter-spacing:.03em}
+.qte{flex:none;width:74px;border:0;border-left:1px solid var(--line);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0}
+.qte b{font-size:24px;line-height:1;font-variant-numeric:tabular-nums}
+.qte small{font-size:11px;color:var(--muted);margin-top:4px}
+.ligne.ok{background:var(--ok-bg);border-color:var(--ok-line)}
+.ligne.ok .etat{background:var(--ok);border-color:var(--ok)}
+.ligne.ok .qte{border-color:var(--ok-line)}
+.ligne.ecart{background:var(--warn-bg);border-color:var(--warn-line)}
+.ligne.ecart .etat{background:var(--warn);border-color:var(--warn)}
+.ligne.ecart .qte{border-color:var(--warn-line)}
+.ligne.ecart .qte b{color:var(--warn)}
+.ligne.part{opacity:0}
+.vide{text-align:center;color:var(--muted);padding:40px 20px}
+
+/* ---------- Barre du bas ---------- */
+.pied{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,var(--bg) 35%)}
+.pied .cadre{display:flex}
+.btn{border:0;border-radius:14px;padding:14px 16px;font-weight:700;font-size:16px;background:var(--line);color:var(--text)}
+.btn.prim{background:var(--accent);color:#fff}
+.btn.prim:active{background:var(--accent-dark)}
+.btn.large{width:100%}
+.btn.discret{background:transparent;color:var(--muted);font-weight:600}
+
+/* ---------- Feuilles (saisie, bilan) ---------- */
+.voile{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.voile.ouvert{display:flex}
+.feuille{background:var(--card);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;animation:monte .18s ease-out}
+@keyframes monte{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+.feuille h3{margin:0;font-size:17px;line-height:1.3}
+.feuille .meta{margin-top:4px}
+.attendu{margin:12px 0 4px;color:var(--muted);font-size:15px}
+.attendu b{color:var(--text);font-size:18px}
+.stepper{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0 14px}
+.stepper button{width:64px;height:64px;border-radius:50%;border:0;background:var(--line);font-size:32px;font-weight:600;line-height:1}
+.stepper output{min-width:110px;text-align:center;font-size:52px;font-weight:800;font-variant-numeric:tabular-nums}
+.stepper output.diff{color:var(--warn)}
+.stepper output.egal{color:var(--ok)}
+.pave{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pave button{height:54px;border-radius:12px;border:0;background:var(--bg);font-size:22px;font-weight:600}
+.actions{display:flex;gap:8px;margin-top:14px}
+.actions .btn{flex:1}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.stat{background:var(--bg);border-radius:12px;padding:10px 8px;text-align:center}
+.stat b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.ok b{color:var(--ok)} .stat.ecart b{color:var(--warn)}
+.alerte{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.alerte button{border:0;background:var(--warn);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;flex:none}
+.ecarts h4{margin:6px 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ecart-l{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.ecart-l .txt{flex:1;min-width:0}
+.ecart-l .nom{font-size:14px}
+.diffbadge{flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.diffbadge b{display:block;font-size:18px;color:var(--warn)}
+.diffbadge span{font-size:12px;color:var(--muted)}
+.bravo{text-align:center;padding:18px 0 8px;font-size:17px;font-weight:600;color:var(--ok)}
+
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.vu{opacity:1}
+
+/* ---------- Accueil ---------- */
+.accueil{padding:28px 16px 40px;padding-top:calc(28px + env(safe-area-inset-top))}
+.marque{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.marque .logo{width:44px;height:44px;border-radius:12px;background:var(--accent);display:grid;place-items:center;flex:none}
+.marque h1{margin:0;font-size:24px}
+.intro{color:var(--muted);margin:0 0 20px}
+.carte{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.carte h2{margin:0 0 10px;font-size:16px}
+.carte ol{margin:0;padding-left:20px}
+.carte li{margin:6px 0}
+.carte p{margin:8px 0}
+.reprise{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--bg);border:0;border-radius:12px;padding:12px;margin-top:8px}
+.reprise .txt{flex:1;min-width:0}
+.reprise b{display:block;font-size:15px}
+.reprise span{font-size:13px;color:var(--muted)}
+.favori{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:12px;margin:6px 0 4px;cursor:grab;user-select:none}
+.petit{font-size:13px;color:var(--muted)}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--muted);font-size:14px}
+kbd{background:var(--bg);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;font:600 13px/1.6 ui-monospace,Consolas,monospace}
+.attente{text-align:center;padding:60px 20px}
+.attente .gros{font-size:56px;font-weight:800;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- ======================= ACCUEIL ======================= -->
+<section id="vueAccueil" class="accueil cadre" hidden>
+  <div class="marque">
+    <div class="logo"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><path d="M14 33l11 11 25-26" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h1>Inventaire tournant</h1>
+  </div>
+  <p class="intro">La feuille d'inventaire, sur le téléphone. Un tap quand c'est bon, un chiffre seulement quand il y a un écart.</p>
+
+  <div class="carte" id="carteReprise" hidden>
+    <h2>Reprendre</h2>
+    <div id="listeReprise"></div>
+  </div>
+
+  <div class="carte">
+    <h2>📱 Sur le téléphone</h2>
+    <ol>
+      <li>Sur le PC, ouvre la page <b>Imprimer inventaire</b> dans jaja.</li>
+      <li>Clique sur le favori <b>📱 Inventaire</b> : un QR code s'affiche.</li>
+      <li>Scanne-le avec l'appareil photo du téléphone.</li>
+    </ol>
+    <p><button class="btn large" id="btnDemo">Essayer avec un exemple</button></p>
+  </div>
+
+  <div class="carte">
+    <h2>💻 Installer le favori sur le PC</h2>
+    <p>À faire une seule fois, dans Firefox sur le PC de la boutique :</p>
+    <ol>
+      <li>Affiche la barre personnelle avec <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>B</kbd>.</li>
+      <li>Glisse ce bouton dedans :</li>
+    </ol>
+    <p style="text-align:center"><a class="favori" id="lienFavori" href="#">📱 Inventaire</a></p>
+    <p class="petit">Ne clique pas dessus ici : il ne fonctionne que sur la page d'inventaire de jaja.</p>
+    <details>
+      <summary>Le favori ne fait rien quand je clique dessus ?</summary>
+      <p class="petit">Remplace-le par cette version autonome (même principe, elle n'a pas besoin de télécharger quoi que ce soit) :</p>
+      <p style="text-align:center"><a class="favori" id="lienFavoriAutonome" href="#">📱 Inventaire</a></p>
+    </details>
+  </div>
+
+  <p class="petit">Les données d'inventaire restent sur ton téléphone : la liste voyage dans le QR code et la progression est enregistrée dans le navigateur, rien n'est envoyé sur internet.</p>
+</section>
+
+<!-- ======================= ATTENTE (QR multiples) ======================= -->
+<section id="vueAttente" class="attente cadre" hidden>
+  <div class="gros" id="attenteCompte"></div>
+  <p id="attenteTexte"></p>
+  <p class="petit">Sur le PC, clique sur <b>Suivant ▶</b> et scanne le QR code suivant.</p>
+</section>
+
+<!-- ======================= LISTE ======================= -->
+<section id="vueListe" hidden>
+  <header class="entete">
+    <div class="cadre">
+      <div class="entete-haut">
+        <button class="icone" id="btnAccueil" aria-label="Accueil">‹</button>
+        <h1 id="titre"></h1>
+      </div>
+      <div class="prog">
+        <div class="barre"><i id="barre"></i></div>
+        <span class="compteur" id="compteur"></span>
+      </div>
+      <div class="filtres" role="group" aria-label="Filtre">
+        <button data-f="tout" aria-pressed="true">Tout</button>
+        <button data-f="todo" aria-pressed="false">À faire</button>
+        <button data-f="ecart" aria-pressed="false" id="filtreEcart">Écarts</button>
+      </div>
+    </div>
+  </header>
+  <main class="cadre" id="liste"></main>
+  <div class="pied"><div class="cadre"><button class="btn prim large" id="btnBilan">Terminer · voir les écarts</button></div></div>
+</section>
+
+<!-- ======================= SAISIE ======================= -->
+<div class="voile" id="voileSaisie">
+  <div class="feuille" role="dialog" aria-modal="true" aria-labelledby="sNom">
+    <h3 id="sNom"></h3>
+    <div class="meta" id="sMeta"></div>
+    <div class="attendu" id="sAttendu"></div>
+    <div class="stepper">
+      <button id="sMoins" aria-label="Moins un">−</button>
+      <output id="sVal">0</output>
+      <button id="sPlus" aria-label="Plus un">+</button>
+    </div>
+    <div class="pave" id="sPave">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button data-k="raz" aria-label="Non vérifié" style="font-size:14px">Non vérifié</button><button>0</button><button data-k="del" aria-label="Effacer">⌫</button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="sAnnuler">Annuler</button>
+      <button class="btn prim" id="sValider">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= BILAN ======================= -->
+<div class="voile" id="voileBilan">
+  <div class="feuille" role="dialog" aria-modal="true" aria-labelledby="bTitre">
+    <h3 id="bTitre">Bilan</h3>
+    <div class="stats" id="bStats"></div>
+    <div id="bAlerte"></div>
+    <div class="ecarts" id="bEcarts"></div>
+    <div class="actions" style="flex-direction:column">
+      <button class="btn prim" id="bCopier">Copier les écarts</button>
+      <button class="btn" id="bFermer">Retour à la liste</button>
+      <button class="btn discret" id="bEffacer">Effacer cet inventaire du téléphone</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ================= Stockage (le navigateur peut le refuser : on reste tolérant) ================= */
+const P = 'inv:';
+const store = {
+  get(k) { try { const v = localStorage.getItem(P + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(P + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(P + k); } catch (e) {} }
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const vibrer = () => { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} };
+
+/* ================= Exemple fictif (aucune donnée réelle) ================= */
+const DEMO = {
+  id: 'demo', t: 'Exemple — inventaire fictif',
+  r: [
+    ['00999001', 0, 'Alimentation exemple 650W 80+ Gold', '3 (3)', 'A01', ''],
+    ['00999002', 0, 'Alimentation exemple 850W 80+ Gold', '1 (1)', 'A01', ''],
+    ['00999003', 1, 'Alimentation exemple 550W 80+ Bronze', '2 (1)', 'A01', 'B04'],
+    ['00999004', 0, 'Tablette exemple 11" 128 Go', '1 (0)', 'A02', ''],
+    ['00999005', 0, 'Tablette exemple 10" 64 Go', '2 (2)', 'A02', ''],
+    ['00999006', 0, 'SSD exemple 1 To NVMe', '4 (4)', 'B03', ''],
+    ['00999007', 0, 'SSD exemple 2 To NVMe', '2 (2)', 'B03', ''],
+    ['00999008', 0, 'Disque dur exemple 4 To 3.5"', '1 (1)', 'B03', '']
+  ]
+};
+
+/* ================= Décodage du QR ================= */
+function b64urlEnOctets(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+async function decoder(payload) {
+  const octets = b64urlEnOctets(payload.slice(1));
+  let buf = octets;
+  if (payload[0] === 'z') {
+    const flux = new Blob([octets]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    buf = new Uint8Array(await new Response(flux).arrayBuffer());
+  }
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+
+/* ================= Index des inventaires gardés sur le téléphone ================= */
+function memoriser(inv) {
+  store.set('data:' + inv.id, inv);
+  let index = (store.get('index') || []).filter(x => x.id !== inv.id);
+  index.unshift({ id: inv.id, t: inv.t, n: inv.r.length, ts: Date.now() });
+  index.slice(6).forEach(x => { store.del('data:' + x.id); store.del('etat:' + x.id); });
+  store.set('index', index.slice(0, 6));
+}
+function oublier(id) {
+  store.del('data:' + id); store.del('etat:' + id);
+  store.set('index', (store.get('index') || []).filter(x => x.id !== id));
+}
+
+/* ================= Routage ================= */
+function montrer(vue) {
+  ['vueAccueil', 'vueAttente', 'vueListe'].forEach(v => { $('#' + v).hidden = v !== vue; });
+  window.scrollTo(0, 0);
+}
+
+async function demarrer() {
+  let h = location.hash.slice(1);
+  try {
+    try { h = decodeURIComponent(h); } catch (e) {}
+    let m = h.match(/^v1\.([0-9a-z]+)\.(\d+)\.(\d+)\.(.+)$/);
+    if (m) {
+      const id = m[1], i = +m[2], n = +m[3], part = m[4];
+      if (n === 1) {
+        const inv = Object.assign(await decoder(part), { id });
+        memoriser(inv);
+        return ouvrir(inv);
+      }
+      const deja = store.get('data:' + id);
+      if (deja) { history.replaceState(null, '', '#id=' + id); return ouvrir(deja); }
+      const parts = store.get('parts:' + id) || {};
+      parts[i] = part;
+      if (!store.set('parts:' + id, parts)) {
+        return attente('⚠️', "Ce navigateur bloque l'enregistrement (navigation privée ?). Ouvre le lien dans un onglet normal.");
+      }
+      const recus = Object.keys(parts).length;
+      if (recus < n) return attente(recus + '/' + n, 'QR code ' + i + ' sur ' + n + ' bien reçu.', id);
+      let tout = '';
+      for (let k = 1; k <= n; k++) tout += parts[k];
+      const inv = Object.assign(await decoder(tout), { id });
+      store.del('parts:' + id);
+      memoriser(inv);
+      history.replaceState(null, '', '#id=' + id);
+      return ouvrir(inv);
+    }
+    m = h.match(/^id=([0-9a-z]+)$/);
+    if (m) {
+      const inv = store.get('data:' + m[1]);
+      if (inv) return ouvrir(inv);
+    }
+    if (h === 'demo') return ouvrir(DEMO);
+  } catch (e) {
+    console.error(e);
+    alert("Impossible de lire ce QR code. Rescanne-le, ou régénère-le depuis jaja.");
+  }
+  accueil();
+}
+
+let attenteId = null;
+function attente(gros, texte, id) {
+  attenteId = id || null;
+  $('#attenteCompte').textContent = gros;
+  $('#attenteTexte').textContent = texte;
+  montrer('vueAttente');
+}
+// Si le dernier QR est scanné dans un autre onglet, celui-ci se met à jour tout seul
+window.addEventListener('storage', () => {
+  if (attenteId && store.get('data:' + attenteId)) location.hash = 'id=' + attenteId;
+});
+window.addEventListener('hashchange', demarrer);
+
+/* ================= Accueil ================= */
+function accueil() {
+  const index = store.get('index') || [];
+  const liste = $('#listeReprise');
+  liste.innerHTML = '';
+  index.forEach(x => {
+    const etat = store.get('etat:' + x.id) || {};
+    const faits = Object.keys(etat).length;
+    const b = document.createElement('button');
+    b.className = 'reprise';
+    b.innerHTML = '<div class="txt"><b>' + esc(x.t) + '</b><span>' + faits + ' / ' + x.n + ' vérifiés</span></div><span aria-hidden="true">›</span>';
+    b.onclick = () => { location.hash = 'id=' + x.id; };
+    liste.appendChild(b);
+  });
+  $('#carteReprise').hidden = index.length === 0;
+  installerFavoris();
+  montrer('vueAccueil');
+}
+$('#btnDemo').onclick = () => { location.hash = 'demo'; };
+
+function installerFavoris() {
+  const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  const chargeur = 'javascript:(function(){window.__INV_BASE=' + JSON.stringify(base) +
+    ';var s=document.createElement("script");s.src=window.__INV_BASE+"favori.js?t="+Date.now();' +
+    's.onerror=function(){alert("Favori inventaire : impossible de charger le script. Essaie la version autonome (page d\'accueil de la checklist).")};' +
+    'document.body.appendChild(s);})();void 0';
+  const lien = $('#lienFavori');
+  lien.href = chargeur;
+  const autonome = $('#lienFavoriAutonome');
+  fetch('favori.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : Promise.reject()).then(code => {
+    autonome.href = 'javascript:' + encodeURIComponent('window.__INV_BASE=' + JSON.stringify(base) + ';' + code + ';void 0');
+  }).catch(() => { autonome.closest('details').hidden = true; });
+  [lien, autonome].forEach(a => a.onclick = e => {
+    e.preventDefault();
+    toast('Glisse ce bouton dans la barre de favoris');
+  });
+}
+
+/* ================= Checklist ================= */
+let INV = null, ETAT = {}, filtre = 'tout';
+const attendu = r => { const m = /\d+/.exec(r[3] || ''); return m ? +m[0] : null; };
+const dispo = r => { const m = /\((\d+)\)/.exec(r[3] || ''); return m ? m[1] : null; };
+function statut(i) {
+  const v = ETAT[i];
+  if (v == null) return 'todo';
+  const a = attendu(INV.r[i]);
+  return a == null || v === a ? 'ok' : 'ecart';
+}
+function sauver() { store.set('etat:' + INV.id, ETAT); }
+
+function ouvrir(inv) {
+  INV = inv;
+  ETAT = store.get('etat:' + inv.id) || {};
+  filtre = 'tout';
+  document.querySelectorAll('.filtres button').forEach(b => b.setAttribute('aria-pressed', b.dataset.f === filtre));
+  $('#titre').textContent = inv.t;
+  document.title = inv.t;
+  rendreListe();
+  montrer('vueListe');
+}
+
+function rendreListe() {
+  const groupes = [], parZone = new Map();
+  INV.r.forEach((r, i) => {
+    const z = r[4] || 'Sans emplacement';
+    if (!parZone.has(z)) { const g = { z, idx: [] }; parZone.set(z, g); groupes.push(g); }
+    parZone.get(z).idx.push(i);
+  });
+  let html = '';
+  groupes.forEach(g => {
+    html += '<section class="zone" data-z="' + esc(g.z) + '"><h2><span>📍 ' + esc(g.z) + '</span><span class="zc"></span></h2>';
+    g.idx.forEach(i => {
+      const r = INV.r[i];
+      html += '<div class="ligne" data-i="' + i + '">' +
+        '<button class="principal"><span class="etat"></span><span style="min-width:0">' +
+        '<div class="nom">' + esc(r[2]) + '</div>' +
+        '<div class="meta">' + (r[1] ? '<span class="fdv">FDV</span>' : '') + '<span>' + esc(r[0]) + '</span>' +
+        (r[5] ? '<span>· aussi en ' + esc(r[5]) + '</span>' : '') + '</div>' +
+        '</span></button>' +
+        '<button class="qte" aria-label="Saisir la quantité"><b></b><small></small></button></div>';
+    });
+    html += '</section>';
+  });
+  $('#liste').innerHTML = html + '<div class="vide" id="vide" hidden></div>';
+  INV.r.forEach((r, i) => majLigne(i));
+  majEntete();
+}
+
+function majLigne(i) {
+  const el = document.querySelector('.ligne[data-i="' + i + '"]');
+  if (!el) return;
+  const r = INV.r[i], s = statut(i), a = attendu(r), d = dispo(r);
+  el.classList.toggle('ok', s === 'ok');
+  el.classList.toggle('ecart', s === 'ecart');
+  el.querySelector('.etat').textContent = s === 'ok' ? '✓' : s === 'ecart' ? '!' : '';
+  const b = el.querySelector('.qte b'), sm = el.querySelector('.qte small');
+  if (s === 'ecart') { b.textContent = ETAT[i]; sm.textContent = 'sur ' + a; }
+  else if (s === 'ok' && a == null) { b.textContent = ETAT[i]; sm.textContent = 'compté'; }
+  else { b.textContent = a == null ? '?' : a; sm.textContent = d != null ? '(' + d + ')' : ''; }
+}
+
+function visible(i) {
+  const s = statut(i);
+  return filtre === 'tout' || (filtre === 'todo' && s === 'todo') || (filtre === 'ecart' && s === 'ecart');
+}
+
+function majEntete() {
+  const n = INV.r.length;
+  let faits = 0, ecarts = 0;
+  INV.r.forEach((r, i) => { const s = statut(i); if (s !== 'todo') faits++; if (s === 'ecart') ecarts++; });
+  $('#compteur').textContent = faits + ' / ' + n;
+  $('#barre').style.width = (n ? faits / n * 100 : 0) + '%';
+  $('#filtreEcart').textContent = ecarts ? 'Écarts (' + ecarts + ')' : 'Écarts';
+  // visibilité + compteurs par zone
+  document.querySelectorAll('.zone').forEach(z => {
+    const lignes = z.querySelectorAll('.ligne');
+    let vis = 0, ok = 0;
+    lignes.forEach(l => {
+      const i = +l.dataset.i;
+      const v = visible(i);
+      l.hidden = !v; if (v) vis++;
+      if (statut(i) !== 'todo') ok++;
+    });
+    z.hidden = vis === 0;
+    z.querySelector('.zc').textContent = ok + '/' + lignes.length;
+  });
+  const vide = $('#vide');
+  const rien = !document.querySelector('.zone:not([hidden])');
+  vide.hidden = !rien;
+  vide.textContent = filtre === 'todo' ? '🎉 Tout est vérifié.' : filtre === 'ecart' ? 'Aucun écart pour le moment.' : '';
+}
+
+// Tap sur une ligne : à faire → conforme → à faire ; écart → saisie
+$('#liste').addEventListener('click', e => {
+  const ligne = e.target.closest('.ligne');
+  if (!ligne) return;
+  const i = +ligne.dataset.i;
+  if (e.target.closest('.qte')) return ouvrirSaisie(i);
+  const s = statut(i), a = attendu(INV.r[i]);
+  if (s === 'ecart' || (s === 'todo' && a == null)) return ouvrirSaisie(i);
+  if (s === 'todo') { ETAT[i] = a; vibrer(); } else { delete ETAT[i]; }
+  sauver();
+  majLigne(i);
+  if (filtre !== 'tout') { ligne.classList.add('part'); setTimeout(majEntete, 220); } else majEntete();
+});
+
+document.querySelectorAll('.filtres button').forEach(b => b.onclick = () => {
+  filtre = b.dataset.f;
+  document.querySelectorAll('.filtres button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.querySelectorAll('.ligne.part').forEach(l => l.classList.remove('part'));
+  majEntete();
+  window.scrollTo(0, 0);
+});
+$('#btnAccueil').onclick = () => { history.pushState(null, '', location.pathname); accueil(); };
+
+/* ================= Saisie d'une quantité ================= */
+let sIdx = null, sValeur = 0, sNeuf = true;
+function ouvrirSaisie(i) {
+  sIdx = i;
+  const r = INV.r[i], a = attendu(r), d = dispo(r);
+  $('#sNom').textContent = r[2];
+  $('#sMeta').innerHTML = (r[1] ? '<span class="fdv">FDV</span>' : '') + '<span>' + esc(r[0]) + '</span><span>· 📍 ' + esc(r[4] || '—') + '</span>' + (r[5] ? '<span>· aussi en ' + esc(r[5]) + '</span>' : '');
+  $('#sAttendu').innerHTML = a == null ? 'Quantité attendue inconnue' : 'Attendu : <b>' + a + '</b>' + (d != null ? ' <span>(' + d + ')</span>' : '');
+  sValeur = ETAT[i] != null ? ETAT[i] : (a != null ? a : 0);
+  sNeuf = true;
+  majSaisie();
+  $('#voileSaisie').classList.add('ouvert');
+}
+function majSaisie() {
+  const o = $('#sVal'), a = attendu(INV.r[sIdx]);
+  o.textContent = sValeur;
+  o.classList.toggle('diff', a != null && sValeur !== a);
+  o.classList.toggle('egal', a != null && sValeur === a);
+}
+function fermerSaisie() { $('#voileSaisie').classList.remove('ouvert'); sIdx = null; }
+$('#sMoins').onclick = () => { sValeur = Math.max(0, sValeur - 1); sNeuf = false; majSaisie(); };
+$('#sPlus').onclick = () => { sValeur = Math.min(9999, sValeur + 1); sNeuf = false; majSaisie(); };
+$('#sPave').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.k === 'del') { sValeur = Math.floor(sValeur / 10); sNeuf = false; return majSaisie(); }
+  if (b.dataset.k === 'raz') {
+    const i = sIdx; delete ETAT[i]; sauver(); fermerSaisie(); majLigne(i); majEntete(); return;
+  }
+  const chiffre = +b.textContent;
+  sValeur = sNeuf ? chiffre : Math.min(9999, sValeur * 10 + chiffre);
+  sNeuf = false;
+  majSaisie();
+});
+$('#sAnnuler').onclick = fermerSaisie;
+$('#sValider').onclick = () => {
+  const i = sIdx; ETAT[i] = sValeur; sauver(); fermerSaisie(); vibrer();
+  majLigne(i); majEntete();
+};
+$('#voileSaisie').addEventListener('click', e => { if (e.target.id === 'voileSaisie') fermerSaisie(); });
+
+/* ================= Bilan ================= */
+function ecartsListe() {
+  return INV.r.map((r, i) => ({ r, i })).filter(x => statut(x.i) === 'ecart');
+}
+function texteEcarts() {
+  const ec = ecartsListe();
+  const restants = INV.r.filter((r, i) => statut(i) === 'todo').length;
+  let t = INV.t + ' — écarts\n';
+  if (!ec.length) t += 'Aucun écart.\n';
+  ec.forEach(({ r, i }) => {
+    const a = attendu(r), d = ETAT[i] - a;
+    t += r[0] + ' · ' + r[2] + ' : attendu ' + a + ', compté ' + ETAT[i] + ' (' + (d > 0 ? '+' : '') + d + ')\n';
+  });
+  if (restants) t += 'Non vérifiés : ' + restants + '\n';
+  return t;
+}
+function ouvrirBilan() {
+  const n = INV.r.length;
+  let ok = 0, ec = 0, todo = 0;
+  INV.r.forEach((r, i) => { const s = statut(i); if (s === 'ok') ok++; else if (s === 'ecart') ec++; else todo++; });
+  $('#bTitre').textContent = INV.t;
+  $('#bStats').innerHTML =
+    '<div class="stat ok"><b>' + ok + '</b><span>conformes</span></div>' +
+    '<div class="stat ecart"><b>' + ec + '</b><span>écarts</span></div>' +
+    '<div class="stat"><b>' + todo + '</b><span>à vérifier</span></div>';
+  $('#bAlerte').innerHTML = todo ? '<div class="alerte"><span>' + todo + ' ligne' + (todo > 1 ? 's' : '') + ' pas encore vérifiée' + (todo > 1 ? 's' : '') + '</span><button id="bVoirTodo">Voir</button></div>' : '';
+  if (todo) $('#bVoirTodo').onclick = () => { fermerBilan(); document.querySelector('.filtres [data-f="todo"]').click(); };
+  const liste = ecartsListe();
+  if (liste.length) {
+    $('#bEcarts').innerHTML = '<h4>À corriger dans jaja</h4>' + liste.map(({ r, i }) => {
+      const a = attendu(r), d = ETAT[i] - a;
+      return '<div class="ecart-l"><div class="txt"><div class="nom">' + esc(r[2]) + '</div><div class="meta"><span>' + esc(r[0]) + '</span><span>· 📍 ' + esc(r[4] || '—') + '</span></div></div>' +
+        '<div class="diffbadge"><b>' + (d > 0 ? '+' : '') + d + '</b><span>' + a + ' → ' + ETAT[i] + '</span></div></div>';
+    }).join('');
+  } else {
+    $('#bEcarts').innerHTML = todo ? '' : '<div class="bravo">✓ Tout est conforme</div>';
+  }
+  $('#bCopier').hidden = !liste.length;
+  $('#bEffacer').hidden = INV.id === 'demo' && !Object.keys(ETAT).length;
+  $('#voileBilan').classList.add('ouvert');
+}
+function fermerBilan() { $('#voileBilan').classList.remove('ouvert'); }
+$('#btnBilan').onclick = ouvrirBilan;
+$('#bFermer').onclick = fermerBilan;
+$('#voileBilan').addEventListener('click', e => { if (e.target.id === 'voileBilan') fermerBilan(); });
+$('#bCopier').onclick = async () => {
+  const t = texteEcarts();
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta);
+    ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove();
+  }
+  toast('Écarts copiés');
+};
+$('#bEffacer').onclick = () => {
+  if (!confirm('Effacer cet inventaire et sa progression de ce téléphone ?')) return;
+  if (INV.id === 'demo') { ETAT = {}; store.del('etat:demo'); fermerBilan(); return ouvrir(DEMO); }
+  oublier(INV.id); fermerBilan();
+  history.pushState(null, '', location.pathname); accueil();
+};
+
+/* ================= Divers ================= */
+let toastTimer;
+function toast(t) {
+  const el = $('#toast'); el.textContent = t; el.classList.add('vu');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('vu'), 1800);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { fermerSaisie(); fermerBilan(); } });
+
+demarrer();
+</script>
+</body>
+</html>
